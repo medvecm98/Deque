@@ -84,6 +84,11 @@ public class Deque<T> : IDeque<T>
                 return true;
             return false;
         }
+
+        public static int operator -(HeadPosition hp1, HeadPosition hp2)
+        {
+            return DATABLOCK_LENGTH - hp1.DataBlockOffset + (hp2.MapPosition - hp1.MapPosition - 1) * DATABLOCK_LENGTH + hp2.DataBlockOffset;
+        }
     }
 
     int Size { get; set; }
@@ -114,6 +119,23 @@ public class Deque<T> : IDeque<T>
         }
     }
 
+    public override int GetHashCode()
+    {
+        int hash = 17;
+        hash = hash * 23 + Size;
+        hash = hash * 23 + Count;
+        hash = hash * 23 + MapCount;
+        hash = hash * 23 + RearHead.MapPosition;
+        hash = hash * 23 + RearHead.DataBlockOffset;
+        hash = hash * 23 + FrontHead.MapPosition;
+        hash = hash * 23 + FrontHead.DataBlockOffset;
+        for (int i = 0; i < Count; i++)
+        {
+            hash = hash * 23 + this[i].GetHashCode();
+        }
+        return hash;
+    }
+
     public Deque()
     {
         Size = DEFAULT_MAP_SIZE;
@@ -126,23 +148,15 @@ public class Deque<T> : IDeque<T>
 
     private void ReallocateMap()
     {
-        T[][] newArray;
-        if (MapCount + 1 >= Size)
+        Size *= 2;
+        T[][] toReturn = new T[Size][];
+        for (int i = RearHead.MapPosition; i <= FrontHead.MapPosition; i++)
         {
-            Size *= 2;
-            newArray = new T[Size][];
-            Array.Copy(QueueMap, RearHead.MapPosition, newArray, (Size - MapCount) / 2, FrontHead.MapPosition - RearHead.MapPosition + 1);
-            FrontHead.MapPosition -= RearHead.MapPosition - ((Size - MapCount) / 2);
-            RearHead.MapPosition -= RearHead.MapPosition - ((Size - MapCount) / 2);
+            toReturn[i + ((Size - MapCount) / 2)] = QueueMap[i];
         }
-        else
-        {
-            newArray = new T[Size][];
-            Array.Copy(QueueMap, RearHead.MapPosition, newArray, (Size - MapCount) / 2, FrontHead.MapPosition - RearHead.MapPosition + 1);
-            FrontHead.MapPosition -= RearHead.MapPosition - ((Size - MapCount) / 2);
-            RearHead.MapPosition -= RearHead.MapPosition - ((Size - MapCount) / 2);
-        }
-        QueueMap = newArray;
+        RearHead.MapPosition = RearHead.MapPosition + ((Size - MapCount) / 2);
+        FrontHead.MapPosition = FrontHead.MapPosition + ((Size - MapCount) / 2);
+        QueueMap = toReturn;
     }
 
     private void AllocateNewDataBlock(HeadPosition where)
@@ -183,7 +197,7 @@ public class Deque<T> : IDeque<T>
 
     public virtual void AddFront(T input)
     {
-        if (FrontHead.MapPosition < 0 || FrontHead.MapPosition >= Size || (QueueMap[FrontHead.MapPosition] == null))
+        if (FrontHead.MapPosition <= 0 || FrontHead.MapPosition >= Size || (QueueMap[FrontHead.MapPosition] == null))
             AllocateNewDataBlock(FrontHead);
         QueueMap[FrontHead.MapPosition][FrontHead.DataBlockOffset] = input;
         Count++;
@@ -192,7 +206,7 @@ public class Deque<T> : IDeque<T>
 
     public virtual void AddBack(T input)
     {
-        if (RearHead.MapPosition < 0 || RearHead.MapPosition >= Size || (QueueMap[RearHead.MapPosition] == null))
+        if (RearHead.MapPosition <= 0 || RearHead.MapPosition >= Size || (QueueMap[RearHead.MapPosition] == null))
             AllocateNewDataBlock(RearHead);
         QueueMap[RearHead.MapPosition][RearHead.DataBlockOffset] = input;
         Count++;
@@ -211,9 +225,9 @@ public class Deque<T> : IDeque<T>
             FrontHead.DataBlockOffset--;
         }
         T toReturn = QueueMap[FrontHead.MapPosition][FrontHead.DataBlockOffset];
-        if (FrontHead.DataBlockOffset == 0)
-            QueueMap[FrontHead.MapPosition] = null;
-        else
+        //if (FrontHead.DataBlockOffset == 0)
+        //    QueueMap[FrontHead.MapPosition] = null;
+        //else
             QueueMap[FrontHead.MapPosition][FrontHead.DataBlockOffset] = default(T);
         Count--;
         return toReturn;
@@ -231,9 +245,9 @@ public class Deque<T> : IDeque<T>
             RearHead.DataBlockOffset++;
         }
         T toReturn = QueueMap[RearHead.MapPosition][RearHead.DataBlockOffset];
-        if (RearHead.DataBlockOffset == (DATABLOCK_LENGTH - 1))
-            QueueMap[RearHead.MapPosition] = null;
-        else
+        //if (RearHead.DataBlockOffset == (DATABLOCK_LENGTH - 1))
+        //    QueueMap[RearHead.MapPosition] = null;
+        //else
             QueueMap[RearHead.MapPosition][RearHead.DataBlockOffset] = default(T);
         Count--;
         return toReturn;
@@ -260,6 +274,7 @@ public class Deque<T> : IDeque<T>
     {
         if (index < 0 || index >= Count)
             throw new ArgumentOutOfRangeException();
+
         int totalIndex = GetTotalIndex(index);
         HeadPosition headPosition = new HeadPosition()
         {
@@ -267,17 +282,41 @@ public class Deque<T> : IDeque<T>
             DataBlockOffset = (totalIndex % DATABLOCK_LENGTH)
         };
 
-        T last = QueueMap[headPosition.MapPosition][headPosition.DataBlockOffset];
-        QueueMap[headPosition.MapPosition][headPosition.DataBlockOffset] = item;
-        for (var head = headPosition.IncNew();
-                 head != FrontHead;
-                 head.Inc())
+        if (headPosition - RearHead < FrontHead - headPosition)
         {
-            T temp = QueueMap[head.MapPosition][head.DataBlockOffset];
-            QueueMap[head.MapPosition][head.DataBlockOffset] = last;
-            last = temp;
+            T last = QueueMap[headPosition.MapPosition][headPosition.DataBlockOffset];
+            QueueMap[headPosition.MapPosition][headPosition.DataBlockOffset] = item;
+            for (var head = headPosition.IncNew();
+                     head != FrontHead;
+                     head.Inc())
+            {
+                T temp = QueueMap[head.MapPosition][head.DataBlockOffset];
+                QueueMap[head.MapPosition][head.DataBlockOffset] = last;
+                last = temp;
+            }
+            AddFront(last);
         }
-        AddFront(last);
+        else
+        {
+            headPosition.Dec();
+            T last = QueueMap[headPosition.MapPosition][headPosition.DataBlockOffset];
+            QueueMap[headPosition.MapPosition][headPosition.DataBlockOffset] = item;
+            if (index == 0)
+                AddBack(item);
+            else
+            {
+                //headPosition.Dec();
+                for (var head = headPosition.DecNew();
+                         head != RearHead;
+                         head.Dec())
+                {
+                    T temp = QueueMap[head.MapPosition][head.DataBlockOffset];
+                    QueueMap[head.MapPosition][head.DataBlockOffset] = last;
+                    last = temp;
+                }
+                AddBack(last);
+            }
+        }
     }
 
     public int GetTotalIndex(int index)
@@ -295,14 +334,29 @@ public class Deque<T> : IDeque<T>
             MapPosition = totalIndex / DATABLOCK_LENGTH,
             DataBlockOffset = (totalIndex % DATABLOCK_LENGTH)
         };
-        for (var head = headPosition.IncNew();
+
+        if (headPosition - RearHead < FrontHead - headPosition)
+        {
+            for (var head = headPosition.IncNew();
                 head != FrontHead;
                 head.Inc())
-        {
-            QueueMap[headPosition.MapPosition][headPosition.DataBlockOffset] = QueueMap[head.MapPosition][head.DataBlockOffset];
-            headPosition.Inc();
+            {
+                QueueMap[headPosition.MapPosition][headPosition.DataBlockOffset] = QueueMap[head.MapPosition][head.DataBlockOffset];
+                headPosition.Inc();
+            }
+            GetFront();
         }
-        GetFront();
+        else
+        {
+            for (var head = headPosition.DecNew();
+                head != RearHead;
+                head.Dec())
+            {
+                QueueMap[headPosition.MapPosition][headPosition.DataBlockOffset] = QueueMap[head.MapPosition][head.DataBlockOffset];
+                headPosition.Dec();
+            }
+            GetBack();
+        }
     }
 
     public void Add(T item)
@@ -352,7 +406,7 @@ public class Deque<T> : IDeque<T>
 
     public IEnumerator<T> GetEnumerator()
     {
-        throw new NotImplementedException();
+        return new DequeEnumerator(this);
     }
 
     IEnumerator IEnumerable.GetEnumerator()
@@ -363,12 +417,17 @@ public class Deque<T> : IDeque<T>
     public class DequeEnumerator : IEnumerator<T>
     {
         int index = -1;
+        int hash = 0;
+        Deque<T> deque;
 
         public T Current
         {
             get
             {
-                return default(T);
+
+                if (index < 0 || index >= deque.Count)
+                    throw new InvalidOperationException();
+                return deque[index];
             }
         }
 
@@ -376,17 +435,28 @@ public class Deque<T> : IDeque<T>
 
         public void Dispose()
         {
-            throw new NotImplementedException();
+            deque = null;
         }
 
         public bool MoveNext()
         {
-            throw new NotImplementedException();
+            index++;
+            if (hash != deque.GetHashCode())
+                throw new InvalidOperationException();
+            if (index < 0 || index >= deque.Count)
+                return false;
+            return true;
         }
 
         public void Reset()
         {
             throw new NotImplementedException();
+        }
+
+        public DequeEnumerator(Deque<T> input)
+        {
+            deque = input;
+            hash = deque.GetHashCode();
         }
     }
 }
