@@ -20,6 +20,7 @@ namespace ConsoleApp1
             d.AddBack(1);
             d.RemoveAt(4);
             d.Insert(4, 12);
+            d.Insert(4, 13);
             //d.GetFront();
         }
     }

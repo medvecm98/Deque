@@ -165,41 +165,18 @@ public class Deque<T> : IDeque<T>
             MapPosition = index / DATABLOCK_LENGTH,
             DataBlockOffset = (index % DATABLOCK_LENGTH)
         };
-        HeadPosition currentPosition = new HeadPosition()
-        {
-            MapPosition = FrontHead.MapPosition,
-            DataBlockOffset = FrontHead.DataBlockOffset - 1
-        };
-        if (FrontHead.DataBlockOffset == 0)
-        {
-            currentPosition.MapPosition = FrontHead.MapPosition - 1;
-            currentPosition.DataBlockOffset = DATABLOCK_LENGTH - 1;
-        }
-        this.AddFront(QueueMap[currentPosition.MapPosition][currentPosition.DataBlockOffset]);
-        Array.Copy(QueueMap[currentPosition.MapPosition],
-                   0,
-                   QueueMap[currentPosition.MapPosition],
-                   1,
-                   currentPosition.DataBlockOffset);
-        while (currentPosition.MapPosition > headPosition.MapPosition + 1)
-        {
-            QueueMap[currentPosition.MapPosition][0] = QueueMap[currentPosition.MapPosition - 1][DATABLOCK_LENGTH - 1];
-            currentPosition.MapPosition--;
-            Array.Copy(QueueMap[currentPosition.MapPosition],
-                       0,
-                       QueueMap[currentPosition.MapPosition],
-                       1,
-                       DATABLOCK_LENGTH - 1);
-        }
-        QueueMap[currentPosition.MapPosition][0] = QueueMap[currentPosition.MapPosition - 1][DATABLOCK_LENGTH - 1];
-        currentPosition.MapPosition--;
-        Array.Copy(QueueMap[headPosition.MapPosition],
-                   headPosition.DataBlockOffset,
-                   QueueMap[headPosition.MapPosition],
-                   headPosition.DataBlockOffset + 1,
-                   DATABLOCK_LENGTH - headPosition.DataBlockOffset - 1
-            );
+        
+        T last = QueueMap[headPosition.MapPosition][headPosition.DataBlockOffset];
         QueueMap[headPosition.MapPosition][headPosition.DataBlockOffset] = item;
+        for (int i = headPosition.MapPosition * DATABLOCK_LENGTH + headPosition.DataBlockOffset + 1; 
+                i < (FrontHead.MapPosition * DATABLOCK_LENGTH + FrontHead.DataBlockOffset); 
+                i++)
+        {
+            T temp = QueueMap[i / DATABLOCK_LENGTH][i % DATABLOCK_LENGTH];
+            QueueMap[i / DATABLOCK_LENGTH][i % DATABLOCK_LENGTH] = last;
+            last = temp;
+        }
+        AddFront(last);
     }
 
     public void RemoveAt(int index)
@@ -209,24 +186,13 @@ public class Deque<T> : IDeque<T>
             MapPosition = index / DATABLOCK_LENGTH,
             DataBlockOffset = (index % DATABLOCK_LENGTH)
         };
-        QueueMap[headPosition.MapPosition][headPosition.DataBlockOffset] = default(T);
-        Array.Copy(QueueMap[headPosition.MapPosition],
-                   headPosition.DataBlockOffset + 1,
-                   QueueMap[headPosition.MapPosition],
-                   headPosition.DataBlockOffset,
-                   DATABLOCK_LENGTH - headPosition.DataBlockOffset - 1);
-        QueueMap[headPosition.MapPosition][DATABLOCK_LENGTH - 1] = default(T);
-        while (QueueMap[headPosition.MapPosition + 1] != null)
+        for (int i = headPosition.MapPosition * DATABLOCK_LENGTH + headPosition.DataBlockOffset + 1;
+                i < (FrontHead.MapPosition * DATABLOCK_LENGTH + FrontHead.DataBlockOffset);
+                i++)
         {
-            QueueMap[headPosition.MapPosition][DATABLOCK_LENGTH - 1] = QueueMap[headPosition.MapPosition + 1][0];
-            headPosition.MapPosition++;
-            Array.Copy(QueueMap[headPosition.MapPosition],
-                       headPosition.DataBlockOffset + 1,
-                       QueueMap[headPosition.MapPosition],
-                       headPosition.DataBlockOffset,
-                       DATABLOCK_LENGTH - 1);
-            QueueMap[headPosition.MapPosition][DATABLOCK_LENGTH - 1] = default(T);
+            QueueMap[(i - 1) / DATABLOCK_LENGTH][(i - 1) % DATABLOCK_LENGTH] = QueueMap[i / DATABLOCK_LENGTH][i % DATABLOCK_LENGTH];
         }
+        GetFront();
     }
 
     public void Add(T item)
