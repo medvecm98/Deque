@@ -10,16 +10,81 @@ interface IDeque<T> : IList<T>
     T GetBack();
 }
 
-internal class HeadPosition
-{
-    public int MapPosition;
-    public int DataBlockOffset;
-}
+
 
 public class Deque<T> : IDeque<T>
 {
-    const int DATABLOCK_LENGTH = 256;
-    const int DEFAULT_MAP_SIZE = 16;
+    const int DATABLOCK_LENGTH = 4;
+    const int DEFAULT_MAP_SIZE = 2;
+
+    internal class HeadPosition
+    {
+        public int MapPosition;
+        public int DataBlockOffset;
+
+        public void Inc()
+        {
+            if (DataBlockOffset + 1 == DATABLOCK_LENGTH)
+            {
+                MapPosition++;
+                DataBlockOffset = 0;
+            }
+            else
+            {
+                DataBlockOffset++;
+            }
+        }
+
+        public void Dec()
+        {
+            if (DataBlockOffset - 1 < 0)
+            {
+                MapPosition--;
+                DataBlockOffset = DATABLOCK_LENGTH - 1;
+            }
+            else
+            {
+                DataBlockOffset--;
+            }
+        }
+
+        public HeadPosition IncNew()
+        {
+            if (DataBlockOffset + 1 == DATABLOCK_LENGTH)
+            {
+                return new HeadPosition() { MapPosition = MapPosition + 1, DataBlockOffset = 0 };
+            }
+            else
+            {
+                return new HeadPosition() { MapPosition = MapPosition, DataBlockOffset = DataBlockOffset + 1 };
+            }
+        }
+        public HeadPosition DecNew()
+        {
+            if (DataBlockOffset - 1 < 0)
+            {
+                return new HeadPosition() { MapPosition = MapPosition - 1, DataBlockOffset = DATABLOCK_LENGTH - 1 };
+            }
+            else
+            {
+                return new HeadPosition() { MapPosition = MapPosition, DataBlockOffset = DataBlockOffset - 1 };
+            }
+        }
+
+        public static bool operator !=(HeadPosition hp1, HeadPosition hp2)
+        {
+            if ((hp1.MapPosition == hp2.MapPosition) && (hp1.DataBlockOffset == hp2.DataBlockOffset))
+                return false;
+            return true;
+        }
+
+        public static bool operator ==(HeadPosition hp1, HeadPosition hp2)
+        {
+            if ((hp1.MapPosition == hp2.MapPosition) && (hp1.DataBlockOffset == hp2.DataBlockOffset))
+                return true;
+            return false;
+        }
+    }
 
     int Size { get; set; }
     HeadPosition FrontHead { get; set; }
@@ -62,20 +127,20 @@ public class Deque<T> : IDeque<T>
     private void ReallocateMap()
     {
         T[][] newArray;
-        if (MapCount == Size)
+        if (MapCount + 1 >= Size)
         {
             Size *= 2;
             newArray = new T[Size][];
-            Array.Copy(QueueMap, RearHead.MapPosition, newArray, (Size - Count) / 2, FrontHead.MapPosition - RearHead.MapPosition + 1);
-            FrontHead.MapPosition -= RearHead.MapPosition - ((Size - Count) / 2);
-            RearHead.MapPosition -= RearHead.MapPosition - ((Size - Count) / 2);
+            Array.Copy(QueueMap, RearHead.MapPosition, newArray, (Size - MapCount) / 2, FrontHead.MapPosition - RearHead.MapPosition + 1);
+            FrontHead.MapPosition -= RearHead.MapPosition - ((Size - MapCount) / 2);
+            RearHead.MapPosition -= RearHead.MapPosition - ((Size - MapCount) / 2);
         }
         else
         {
             newArray = new T[Size][];
-            Array.Copy(QueueMap, RearHead.MapPosition, newArray, (Size - Count) / 2, FrontHead.MapPosition - RearHead.MapPosition + 1);
-            FrontHead.MapPosition -= RearHead.MapPosition - ((Size - Count) / 2);
-            RearHead.MapPosition -= RearHead.MapPosition - ((Size - Count) / 2);
+            Array.Copy(QueueMap, RearHead.MapPosition, newArray, (Size - MapCount) / 2, FrontHead.MapPosition - RearHead.MapPosition + 1);
+            FrontHead.MapPosition -= RearHead.MapPosition - ((Size - MapCount) / 2);
+            RearHead.MapPosition -= RearHead.MapPosition - ((Size - MapCount) / 2);
         }
         QueueMap = newArray;
     }
@@ -118,7 +183,7 @@ public class Deque<T> : IDeque<T>
 
     public virtual void AddFront(T input)
     {
-        if (QueueMap[FrontHead.MapPosition] == null)
+        if (FrontHead.MapPosition < 0 || FrontHead.MapPosition >= Size || (QueueMap[FrontHead.MapPosition] == null))
             AllocateNewDataBlock(FrontHead);
         QueueMap[FrontHead.MapPosition][FrontHead.DataBlockOffset] = input;
         Count++;
@@ -127,7 +192,7 @@ public class Deque<T> : IDeque<T>
 
     public virtual void AddBack(T input)
     {
-        if (QueueMap[RearHead.MapPosition] == null)
+        if (RearHead.MapPosition < 0 || RearHead.MapPosition >= Size || (QueueMap[RearHead.MapPosition] == null))
             AllocateNewDataBlock(RearHead);
         QueueMap[RearHead.MapPosition][RearHead.DataBlockOffset] = input;
         Count++;
@@ -193,6 +258,8 @@ public class Deque<T> : IDeque<T>
 
     public void Insert(int index, T item)
     {
+        if (index < 0 || index >= Count)
+            throw new ArgumentOutOfRangeException();
         int totalIndex = GetTotalIndex(index);
         HeadPosition headPosition = new HeadPosition()
         {
@@ -202,12 +269,12 @@ public class Deque<T> : IDeque<T>
 
         T last = QueueMap[headPosition.MapPosition][headPosition.DataBlockOffset];
         QueueMap[headPosition.MapPosition][headPosition.DataBlockOffset] = item;
-        for (long i = headPosition.MapPosition * DATABLOCK_LENGTH + headPosition.DataBlockOffset + 1;
-                i < (FrontHead.MapPosition * DATABLOCK_LENGTH + FrontHead.DataBlockOffset);
-                i++)
+        for (var head = headPosition.IncNew();
+                 head != FrontHead;
+                 head.Inc())
         {
-            T temp = QueueMap[i / DATABLOCK_LENGTH][i % DATABLOCK_LENGTH];
-            QueueMap[i / DATABLOCK_LENGTH][i % DATABLOCK_LENGTH] = last;
+            T temp = QueueMap[head.MapPosition][head.DataBlockOffset];
+            QueueMap[head.MapPosition][head.DataBlockOffset] = last;
             last = temp;
         }
         AddFront(last);
@@ -220,17 +287,20 @@ public class Deque<T> : IDeque<T>
 
     public void RemoveAt(int index)
     {
+        if (index < 0 || index >= Count)
+            throw new ArgumentOutOfRangeException();
         int totalIndex = GetTotalIndex(index);
         HeadPosition headPosition = new HeadPosition()
         {
             MapPosition = totalIndex / DATABLOCK_LENGTH,
             DataBlockOffset = (totalIndex % DATABLOCK_LENGTH)
         };
-        for (int i = headPosition.MapPosition * DATABLOCK_LENGTH + headPosition.DataBlockOffset + 1;
-                i < (FrontHead.MapPosition * DATABLOCK_LENGTH + FrontHead.DataBlockOffset);
-                i++)
+        for (var head = headPosition.IncNew();
+                head != FrontHead;
+                head.Inc())
         {
-            QueueMap[(i - 1) / DATABLOCK_LENGTH][(i - 1) % DATABLOCK_LENGTH] = QueueMap[i / DATABLOCK_LENGTH][i % DATABLOCK_LENGTH];
+            QueueMap[headPosition.MapPosition][headPosition.DataBlockOffset] = QueueMap[head.MapPosition][head.DataBlockOffset];
+            headPosition.Inc();
         }
         GetFront();
     }

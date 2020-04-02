@@ -7,7 +7,7 @@ namespace ConsoleApp1
         static void Main(string[] args)
         {
             Deque<int> d = new Deque<int>();
-            d.AddFront(4); 
+            d.AddFront(4);
             d.AddFront(5);
 
             d.AddFront(6);
@@ -33,6 +33,10 @@ namespace ConsoleApp1
             Console.WriteLine(d[9]);
             Console.WriteLine(d[10]);
             //d.GetFront();
+            //for (int i = 0; i < 100; i++)
+            //{
+            //    d.AddBack(i);
+            //}
         }
     }
 }
