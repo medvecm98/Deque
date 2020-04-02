@@ -18,9 +18,20 @@ namespace ConsoleApp1
             d.AddBack(3);
             d.AddBack(2);
             d.AddBack(1);
-            d.RemoveAt(4);
-            d.Insert(4, 12);
-            d.Insert(4, 13);
+            d.RemoveAt(1);
+            d.Insert(1, 12);
+            d.Insert(1, 13);
+            bool b = d.Contains(13);
+            bool b2 = d.Contains(14);
+            int i = d.IndexOf(7);
+            int i1 = d.IndexOf(0);
+            int i2 = d.IndexOf(1);
+            int i3 = d[1];
+            d[1] = 200;
+            int i4 = d[1];
+            //Console.WriteLine(d[-1]);
+            Console.WriteLine(d[9]);
+            Console.WriteLine(d[10]);
             //d.GetFront();
         }
     }
