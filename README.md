@@ -5,8 +5,6 @@ Naimplementujte datovou strukturu typicky pojmenovávanou Deque, neboli double- 
 
 Jako interní datovou strukturu ve vašem řešení povinně použijte implementaci pomocí pole polí, tak jak je typicky implementována třída deque v STL knihovně C++:
 
-![Image]("http://kremer.cpsc.ucalgary.ca/STL/1024x768/deque.jpeg")
-
 [Původní zdroj: http://kremer.cpsc.ucalgary.ca/STL/1024x768/deque.html (M. Nelson. C++ Programmer’s Guide to the Standard Template Library. IDG Books Worldwide, Inc. Foster City, CA, 1995)]
 kde velikost primárního pole Map se zvětšuje dle potřeby, velikost každého Data Blocku je kontantní.
 
