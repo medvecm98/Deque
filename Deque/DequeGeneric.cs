@@ -2,7 +2,9 @@
 using System.Collections;
 using System.Collections.Generic;
 
-interface IDeque<T> : IList<T>
+[assembly:System.Runtime.CompilerServices.InternalsVisibleTo("XUnitTestProject1")]
+
+public interface IDeque<T> : IList<T>
 {
     void AddFront(T input);
     void AddBack(T input);
@@ -14,8 +16,8 @@ interface IDeque<T> : IList<T>
 
 public class Deque<T> : IDeque<T>
 {
-    const int DATABLOCK_LENGTH = 4;
-    const int DEFAULT_MAP_SIZE = 2;
+    const int DATABLOCK_LENGTH = 256;
+    const int DEFAULT_MAP_SIZE = 16;
 
     internal class HeadPosition
     {
@@ -89,6 +91,25 @@ public class Deque<T> : IDeque<T>
         {
             return DATABLOCK_LENGTH - hp1.DataBlockOffset + (hp2.MapPosition - hp1.MapPosition - 1) * DATABLOCK_LENGTH + hp2.DataBlockOffset;
         }
+
+        public override bool Equals(object obj)
+        {
+            if (obj is HeadPosition hp)
+            {
+                if ((this.MapPosition == hp.MapPosition) && (this.DataBlockOffset == hp.DataBlockOffset))
+                    return true;
+                return false;
+            }
+            return ((object)this).Equals(obj);
+        }
+
+        public override int GetHashCode()
+        {
+            int hash = 23;
+            hash = hash * 149 + MapPosition;
+            hash = hash * 149 + DataBlockOffset;
+            return hash;
+        }
     }
 
     int Size { get; set; }
@@ -105,16 +126,18 @@ public class Deque<T> : IDeque<T>
     {
         get
         {
-            int totalIndex = RearHead.MapPosition * DATABLOCK_LENGTH + RearHead.DataBlockOffset + 1 + index;
             if (index < 0 || index >= Count)
                 throw new IndexOutOfRangeException("Index was outside the range of Deque.");
+            int totalIndex = GetTotalIndex(index);
+
             return QueueMap[totalIndex / DATABLOCK_LENGTH][totalIndex % DATABLOCK_LENGTH];
         }
         set
         {
-            int totalIndex = GetTotalIndex(index);
             if (index < 0 || index >= Count)
                 throw new IndexOutOfRangeException("Index was outside the range of Deque.");
+            int totalIndex = GetTotalIndex(index);
+
             this.QueueMap[totalIndex / DATABLOCK_LENGTH][totalIndex % DATABLOCK_LENGTH] = value;
         }
     }
@@ -184,7 +207,7 @@ public class Deque<T> : IDeque<T>
     {
         if ((RearHead.DataBlockOffset - 1) < 0)
         {
-            if (RearHead.MapPosition - 1 < 0)
+            if (RearHead.MapPosition - 1 <= 0)
                 ReallocateMap();
             RearHead.MapPosition--;
             RearHead.DataBlockOffset = DATABLOCK_LENGTH - 1;
@@ -195,26 +218,32 @@ public class Deque<T> : IDeque<T>
         }
     }
 
-    public virtual void AddFront(T input)
+    public void AddFront(T input)
     {
-        if (FrontHead.MapPosition <= 0 || FrontHead.MapPosition >= Size || (QueueMap[FrontHead.MapPosition] == null))
+        if (FrontHead.MapPosition >= Size)
+            ReallocateMap();
+        if (QueueMap[FrontHead.MapPosition] == null)
             AllocateNewDataBlock(FrontHead);
         QueueMap[FrontHead.MapPosition][FrontHead.DataBlockOffset] = input;
         Count++;
         MoveFrontHead();
     }
 
-    public virtual void AddBack(T input)
+    public void AddBack(T input)
     {
-        if (RearHead.MapPosition <= 0 || RearHead.MapPosition >= Size || (QueueMap[RearHead.MapPosition] == null))
+        if (RearHead.MapPosition <= 0)
+            ReallocateMap();
+        if (QueueMap[RearHead.MapPosition] == null)
             AllocateNewDataBlock(RearHead);
         QueueMap[RearHead.MapPosition][RearHead.DataBlockOffset] = input;
         Count++;
         MoveRearHead();
     }
 
-    public virtual T GetFront()
+    public T GetFront()
     {
+        if (Count == 0)
+            throw new InvalidOperationException("Deque empty.");
         if ((FrontHead.DataBlockOffset - 1) < 0)
         {
             FrontHead.MapPosition--;
@@ -228,13 +257,15 @@ public class Deque<T> : IDeque<T>
         //if (FrontHead.DataBlockOffset == 0)
         //    QueueMap[FrontHead.MapPosition] = null;
         //else
-            QueueMap[FrontHead.MapPosition][FrontHead.DataBlockOffset] = default(T);
+        QueueMap[FrontHead.MapPosition][FrontHead.DataBlockOffset] = default(T);
         Count--;
         return toReturn;
     }
 
-    public virtual T GetBack()
+    public T GetBack()
     {
+        if (Count == 0)
+            throw new InvalidOperationException("Deque empty.");
         if ((RearHead.DataBlockOffset + 1) == DATABLOCK_LENGTH)
         {
             RearHead.MapPosition++;
@@ -248,7 +279,7 @@ public class Deque<T> : IDeque<T>
         //if (RearHead.DataBlockOffset == (DATABLOCK_LENGTH - 1))
         //    QueueMap[RearHead.MapPosition] = null;
         //else
-            QueueMap[RearHead.MapPosition][RearHead.DataBlockOffset] = default(T);
+        QueueMap[RearHead.MapPosition][RearHead.DataBlockOffset] = default(T);
         Count--;
         return toReturn;
 
@@ -256,24 +287,36 @@ public class Deque<T> : IDeque<T>
 
     public int IndexOf(T item)
     {
-        int r = 0;
-        for (long i = RearHead.MapPosition * DATABLOCK_LENGTH + RearHead.DataBlockOffset + 1;
-                  i < FrontHead.MapPosition * DATABLOCK_LENGTH + FrontHead.DataBlockOffset;
+        for (int i = 0;
+                  i < Count;
                   i++)
         {
-            if (QueueMap[i / DATABLOCK_LENGTH][i % DATABLOCK_LENGTH].Equals(item))
+            if (this[i].Equals(item))
             {
-                return r;
+                return i;
             }
-            r++;
         }
         return -1;
     }
 
     public void Insert(int index, T item)
     {
-        if (index < 0 || index >= Count)
+        if (index < 0 || index > Count)
             throw new ArgumentOutOfRangeException();
+        if (this.IsReadOnly)
+            throw new NotSupportedException("Deque is readonly.");
+
+        if (index == 0)
+        {
+            AddBack(item);
+            return;
+        }
+
+        if (index == Count)
+        {
+            AddFront(item);
+            return;
+        }
 
         int totalIndex = GetTotalIndex(index);
         HeadPosition headPosition = new HeadPosition()
@@ -301,21 +344,15 @@ public class Deque<T> : IDeque<T>
             headPosition.Dec();
             T last = QueueMap[headPosition.MapPosition][headPosition.DataBlockOffset];
             QueueMap[headPosition.MapPosition][headPosition.DataBlockOffset] = item;
-            if (index == 0)
-                AddBack(item);
-            else
+            for (var head = headPosition.DecNew();
+                     head != RearHead;
+                     head.Dec())
             {
-                //headPosition.Dec();
-                for (var head = headPosition.DecNew();
-                         head != RearHead;
-                         head.Dec())
-                {
-                    T temp = QueueMap[head.MapPosition][head.DataBlockOffset];
-                    QueueMap[head.MapPosition][head.DataBlockOffset] = last;
-                    last = temp;
-                }
-                AddBack(last);
+                T temp = QueueMap[head.MapPosition][head.DataBlockOffset];
+                QueueMap[head.MapPosition][head.DataBlockOffset] = last;
+                last = temp;
             }
+            AddBack(last);
         }
     }
 
@@ -328,6 +365,19 @@ public class Deque<T> : IDeque<T>
     {
         if (index < 0 || index >= Count)
             throw new ArgumentOutOfRangeException();
+
+        if (index == 0)
+        {
+            GetBack();
+            return;
+        }
+
+        if (index == Count - 1)
+        {
+            GetFront();
+            return;
+        }
+
         int totalIndex = GetTotalIndex(index);
         HeadPosition headPosition = new HeadPosition()
         {
@@ -390,7 +440,20 @@ public class Deque<T> : IDeque<T>
 
     public void CopyTo(T[] array, int arrayIndex)
     {
-        throw new NotImplementedException();
+        if (array.Rank != 1)
+            throw new ArgumentException("Array is multidimensional.");
+        if (Count > (array.Length - arrayIndex))
+            throw new ArgumentException("Not enough space is left in destination array.");
+        if (arrayIndex < 0)
+            throw new ArgumentOutOfRangeException("Index is less than zero.");
+        if (array == null)
+            throw new ArgumentNullException("Input array is null.");
+        int j = 0;
+        for (int i = arrayIndex; j < Count; i++)
+        {
+            array[i] = this[j];
+            j++;
+        }
     }
 
     public bool Remove(T item)
@@ -406,7 +469,156 @@ public class Deque<T> : IDeque<T>
 
     public IEnumerator<T> GetEnumerator()
     {
-        return new DequeEnumerator(this);
+        return new DequeEnumerator<T>(this);
+    }
+
+    IEnumerator IEnumerable.GetEnumerator()
+    {
+        throw new NotImplementedException();
+    }
+}
+
+public class DequeEnumerator<T> : IEnumerator<T>
+{
+    int index = -1;
+    int hash = 0;
+    IDeque<T> deque;
+
+    public T Current
+    {
+        get
+        {
+
+            if (index < 0 || index >= deque.Count)
+                throw new InvalidOperationException();
+            return deque[index];
+        }
+    }
+
+    object IEnumerator.Current => throw new NotImplementedException();
+
+    public void Dispose()
+    {
+        deque = null;
+    }
+
+    public bool MoveNext()
+    {
+        index++;
+        if (hash != deque.GetHashCode())
+            throw new InvalidOperationException();
+        if (index < 0 || index >= deque.Count)
+            return false;
+        return true;
+    }
+
+    public void Reset()
+    {
+        throw new NotImplementedException();
+    }
+
+    public DequeEnumerator(IDeque<T> input)
+    {
+        deque = input;
+        hash = deque.GetHashCode();
+    }
+}
+
+public class ReverseDeque<T> : IDeque<T>, IEnumerable
+{
+    public int Count
+    {
+        get
+        {
+            return deque.Count;
+        }
+    }
+
+    public bool IsReadOnly => false;
+
+    public ReverseDeque(Deque<T> input)
+    {
+        deque = input;
+    }
+    Deque<T> deque;
+    public T this[int index]
+    {
+        get
+        {
+            return deque[deque.Count - 1 - index];
+        }
+        set
+        {
+            deque[deque.Count - 1 - index] = value;
+        }
+    }
+
+    public void Add(T item)
+    {
+        deque.AddBack(item);
+    }
+
+    public void AddBack(T input)
+    {
+        deque.AddFront(input);
+    }
+
+    public void AddFront(T input)
+    {
+        deque.AddBack(input);
+    }
+
+    public void CopyTo(T[] array, int arrayIndex)
+    {
+        if (array.Rank != 1)
+            throw new ArgumentException("Array is multidimensional.");
+        if (Count > (array.Length - arrayIndex))
+            throw new ArgumentException("Not enough space is left in destination array.");
+        if (arrayIndex < 0)
+            throw new ArgumentOutOfRangeException("Index is less than zero.");
+        if (array == null)
+            throw new ArgumentNullException("Input array is null.");
+        int j = Count;
+        for (int i = arrayIndex; j >= 0; i++)
+        {
+            array[i] = this[j];
+            j--;
+        }
+    }
+
+    public T GetBack()
+    {
+        return deque.GetFront();
+    }
+
+    public IEnumerator<T> GetEnumerator()
+    {
+        return new DequeEnumerator<T>(this);
+    }
+
+    public T GetFront()
+    {
+        return deque.GetBack();
+    }
+
+    public int IndexOf(T item)
+    {
+        return deque.Count - 1 - deque.IndexOf(item);
+    }
+
+    public void Insert(int index, T item)
+    {
+        deque.Insert(deque.Count - 1 - index, item);
+    }
+
+    public bool Remove(T item)
+    {
+        return deque.Remove(item);
+    }
+
+    public void RemoveAt(int index)
+    {
+        deque.RemoveAt(deque.Count - 1 - index); ;
     }
 
     IEnumerator IEnumerable.GetEnumerator()
@@ -414,57 +626,22 @@ public class Deque<T> : IDeque<T>
         throw new NotImplementedException();
     }
 
-    public class DequeEnumerator : IEnumerator<T>
+    public void Clear()
     {
-        int index = -1;
-        int hash = 0;
-        Deque<T> deque;
+        deque.Clear();
+    }
 
-        public T Current
-        {
-            get
-            {
-
-                if (index < 0 || index >= deque.Count)
-                    throw new InvalidOperationException();
-                return deque[index];
-            }
-        }
-
-        object IEnumerator.Current => throw new NotImplementedException();
-
-        public void Dispose()
-        {
-            deque = null;
-        }
-
-        public bool MoveNext()
-        {
-            index++;
-            if (hash != deque.GetHashCode())
-                throw new InvalidOperationException();
-            if (index < 0 || index >= deque.Count)
-                return false;
-            return true;
-        }
-
-        public void Reset()
-        {
-            throw new NotImplementedException();
-        }
-
-        public DequeEnumerator(Deque<T> input)
-        {
-            deque = input;
-            hash = deque.GetHashCode();
-        }
+    public bool Contains(T item)
+    {
+        return deque.Contains(item);
     }
 }
+
 
 public static class DequeTest
 {
     public static IList<T> GetReverseView<T>(Deque<T> d)
     {
-        return d;
+        return new ReverseDeque<T>(d);
     }
 }
