@@ -5,6 +5,8 @@ Naimplementujte datovou strukturu typicky pojmenovávanou Deque, neboli double- 
 
 Jako interní datovou strukturu ve vašem řešení povinně použijte implementaci pomocí pole polí, tak jak je typicky implementována třída deque v STL knihovně C++:
 
+![Image]("http://kremer.cpsc.ucalgary.ca/STL/1024x768/deque.jpeg")
+
 [Původní zdroj: http://kremer.cpsc.ucalgary.ca/STL/1024x768/deque.html (M. Nelson. C++ Programmer’s Guide to the Standard Template Library. IDG Books Worldwide, Inc. Foster City, CA, 1995)]
 kde velikost primárního pole Map se zvětšuje dle potřeby, velikost každého Data Blocku je kontantní.
 
@@ -14,9 +16,9 @@ Dále očekávejte, že častým příkladem použití bude procházení prvků 
 
 Cílem této úlohy je, abyste si vyzkoušeli návrh knihovny (a v ní implementované datové struktury) tak, aby odpovídala pravidlům a konvencím běžným v prostředí .NET. Proto také zdrojový soubor odevzdaný do CodExu nebude hotovým programem. V této úloze nebudete tedy číst žádný vstup, ani žádný výstup vypisovat a vaše implementace bude pouze podrobena sadě unit testů. Abychom nemuseli implementovat komplikovaný unit test framework, tak po vaší implementaci požadujeme:
 
-    * nesmí obsahovat metodu Main v žádné třídě
-    * musí obsahovat veřejnou generickou třídu pojmenovanou Deque a s jedním typovým parametrem bez omezení
-    * musí obsahovat veřejnou statickou testovací třídu DequeTest, která testům CodExu poskytne inverzní pohled z existující instance vaší Deque (váš Deque ale navrhněte tak, aby její inverzní pohled bylo možno získat i bez použití třídy DequeTest)
+- nesmí obsahovat metodu Main v žádné třídě
+- musí obsahovat veřejnou generickou třídu pojmenovanou Deque a s jedním typovým parametrem bez omezení
+- musí obsahovat veřejnou statickou testovací třídu DequeTest, která testům CodExu poskytne inverzní pohled z existující instance vaší Deque (váš Deque ale navrhněte tak, aby její inverzní pohled bylo možno získat i bez použití třídy DequeTest)
 
 Třída DequeTest musí být naimplementována podle následujícího prototypu:
 ```
