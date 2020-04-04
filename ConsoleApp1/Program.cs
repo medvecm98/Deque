@@ -17,6 +17,16 @@ namespace ConsoleApp1
 
             Console.WriteLine(d.IndexOf("a"));
             Console.WriteLine(rev.IndexOf(null));
+
+            foreach(var i in d)
+            {
+                Console.WriteLine(i);
+            }
+
+            foreach(var j in rev)
+            {
+                Console.WriteLine(j);
+            }
         }
     }
 }

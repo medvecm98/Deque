@@ -157,7 +157,8 @@ public class Deque<T> : IDeque<T>
         hash = hash * 23 + FrontHead.DataBlockOffset;
         for (int i = 0; i < Count; i++)
         {
-            hash = hash * 23 + this[i].GetHashCode();
+            if (this[i] != null)
+                hash = hash * 23 + this[i].GetHashCode();
         }
         return hash;
     }
