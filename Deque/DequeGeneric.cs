@@ -2,7 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 
-[assembly:System.Runtime.CompilerServices.InternalsVisibleTo("XUnitTestProject1")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("XUnitTestProject1")]
 
 public interface IDeque<T> : IList<T>
 {
@@ -89,7 +89,10 @@ public class Deque<T> : IDeque<T>
 
         public static int operator -(HeadPosition hp1, HeadPosition hp2)
         {
-            return DATABLOCK_LENGTH - hp1.DataBlockOffset + (hp2.MapPosition - hp1.MapPosition - 1) * DATABLOCK_LENGTH + hp2.DataBlockOffset;
+            int ihp1 = hp1.MapPosition * DATABLOCK_LENGTH + hp1.DataBlockOffset;
+            int ihp2 = hp2.MapPosition * DATABLOCK_LENGTH + hp2.DataBlockOffset;
+
+            return ihp1 - ihp2;
         }
 
         public override bool Equals(object obj)
@@ -287,14 +290,17 @@ public class Deque<T> : IDeque<T>
 
     public int IndexOf(T item)
     {
-        for (int i = 0;
-                  i < Count;
-                  i++)
+        int j = 0;
+        for (var i = RearHead.IncNew(); i != FrontHead; i.Inc())
         {
-            if (this[i].Equals(item))
+            if (QueueMap[i.MapPosition][i.DataBlockOffset] == null)
             {
-                return i;
+                if (item == null)
+                    return j;
             }
+            else if (QueueMap[i.MapPosition][i.DataBlockOffset].Equals(item))
+                return j;
+            j++;
         }
         return -1;
     }
@@ -426,16 +432,9 @@ public class Deque<T> : IDeque<T>
 
     public bool Contains(T item)
     {
-        for (long i = RearHead.MapPosition * DATABLOCK_LENGTH + RearHead.DataBlockOffset + 1;
-                  i < FrontHead.MapPosition * DATABLOCK_LENGTH + FrontHead.DataBlockOffset;
-                  i++)
-        {
-            if (QueueMap[i / DATABLOCK_LENGTH][i % DATABLOCK_LENGTH].Equals(item))
-            {
-                return true;
-            }
-        }
-        return false;
+        if (IndexOf(item) == -1)
+            return false;
+        return true;
     }
 
     public void CopyTo(T[] array, int arrayIndex)
@@ -448,6 +447,7 @@ public class Deque<T> : IDeque<T>
             throw new ArgumentOutOfRangeException("Index is less than zero.");
         if (array == null)
             throw new ArgumentNullException("Input array is null.");
+
         int j = 0;
         for (int i = arrayIndex; j < Count; i++)
         {
@@ -586,39 +586,44 @@ public class ReverseDeque<T> : IDeque<T>, IEnumerable
         }
     }
 
-    public T GetBack()
-    {
-        return deque.GetFront();
-    }
+    public T GetBack() => deque.GetFront();
 
     public IEnumerator<T> GetEnumerator()
     {
         return new DequeEnumerator<T>(this);
     }
 
-    public T GetFront()
-    {
-        return deque.GetBack();
-    }
+    public T GetFront() => deque.GetBack();
 
     public int IndexOf(T item)
     {
-        return deque.Count - 1 - deque.IndexOf(item);
+        for (int i = 0; i < Count; i++)
+        {
+            if (this[i] == null)
+            {
+                if (item == null)
+                    return i;
+            }
+            else if (this[i].Equals(item))
+                return i;
+        }
+        return -1;
     }
+
 
     public void Insert(int index, T item)
     {
-        deque.Insert(deque.Count - 1 - index, item);
+        if (deque.Count == 0)
+            deque.Insert(0, item);
+        else
+            deque.Insert(deque.Count - 1 - index, item);
     }
 
-    public bool Remove(T item)
-    {
-        return deque.Remove(item);
-    }
+    public bool Remove(T item) => deque.Remove(item);
 
     public void RemoveAt(int index)
     {
-        deque.RemoveAt(deque.Count - 1 - index); ;
+        deque.RemoveAt(deque.Count - 1 - index);
     }
 
     IEnumerator IEnumerable.GetEnumerator()
@@ -631,10 +636,8 @@ public class ReverseDeque<T> : IDeque<T>, IEnumerable
         deque.Clear();
     }
 
-    public bool Contains(T item)
-    {
-        return deque.Contains(item);
-    }
+    public bool Contains(T item) => deque.Contains(item);
+
 }
 
 

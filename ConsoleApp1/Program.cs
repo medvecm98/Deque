@@ -7,11 +7,16 @@ namespace ConsoleApp1
     {
         static void Main(string[] args)
         {
-            var d = new Deque<int>();
-            IDeque<int> rev = new ReverseDeque<int>(d);
-            d.Insert(d.Count, 2);
-            d.Insert(d.Count, 2);
-            d.RemoveAt(0);
+            var d = new Deque<string>();
+            IDeque<string> rev = new ReverseDeque<string>(d);
+            d.Insert(0, null);
+            d.Insert(0, null);
+            d.Insert(0, "a");
+            d.Insert(0, null);
+            d.Insert(0, "a");
+
+            Console.WriteLine(d.IndexOf("a"));
+            Console.WriteLine(rev.IndexOf(null));
         }
     }
 }
