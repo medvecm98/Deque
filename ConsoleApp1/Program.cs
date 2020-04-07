@@ -22,6 +22,7 @@ namespace ConsoleApp1
             foreach(var i in d)
             {
                 Console.WriteLine(i);
+                d.Insert(1, "b");
             }
 
             foreach(var j in rev)

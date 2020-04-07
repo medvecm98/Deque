@@ -472,58 +472,20 @@ public class Deque<T> : IDeque<T>
 
     public IEnumerator<T> GetEnumerator()
     {
-        return new DequeEnumerator<T>(this);
+        int hashOriginal = this.GetHashCode();
+        int hash;
+        for (int i = 0; i < Count; i++)
+        {
+            hash = this.GetHashCode();
+            if (hashOriginal != hash)
+                throw new InvalidOperationException();
+            yield return this[i];
+        }
     }
 
     IEnumerator IEnumerable.GetEnumerator()
     {
         throw new NotImplementedException();
-    }
-}
-
-public class DequeEnumerator<T> : IEnumerator<T>
-{
-    int index = -1;
-    int hash = 0;
-    IDeque<T> deque;
-
-    public T Current
-    {
-        get
-        {
-
-            if (index < 0 || index >= deque.Count)
-                throw new InvalidOperationException();
-            return deque[index];
-        }
-    }
-
-    object IEnumerator.Current => throw new NotImplementedException();
-
-    public void Dispose()
-    {
-        deque = null;
-    }
-
-    public bool MoveNext()
-    {
-        index++;
-        if (hash != deque.GetHashCode())
-            throw new InvalidOperationException();
-        if (index < 0 || index >= deque.Count)
-            return false;
-        return true;
-    }
-
-    public void Reset()
-    {
-        throw new NotImplementedException();
-    }
-
-    public DequeEnumerator(IDeque<T> input)
-    {
-        deque = input;
-        hash = deque.GetHashCode();
     }
 }
 
@@ -593,7 +555,15 @@ public class ReverseDeque<T> : IDeque<T>, IEnumerable
 
     public IEnumerator<T> GetEnumerator()
     {
-        return new DequeEnumerator<T>(this);
+        int hashOriginal = deque.GetHashCode();
+        int hash;
+        for (int i = 0; i < Count; i++)
+        {
+            hash = deque.GetHashCode();
+            if (hashOriginal != hash)
+                throw new InvalidOperationException();
+            yield return this[i];
+        }
     }
 
     public T GetFront() => deque.GetBack();
