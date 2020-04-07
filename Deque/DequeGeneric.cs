@@ -115,6 +115,7 @@ public class Deque<T> : IDeque<T>
         }
     }
 
+    int hash32Counter = 0;
     int Size { get; set; }
     HeadPosition FrontHead { get; set; }
     HeadPosition RearHead { get; set; }
@@ -155,6 +156,7 @@ public class Deque<T> : IDeque<T>
         hash = hash * 23 + RearHead.DataBlockOffset;
         hash = hash * 23 + FrontHead.MapPosition;
         hash = hash * 23 + FrontHead.DataBlockOffset;
+        hash = hash * 23 + hash32Counter;
         for (int i = 0; i < Count; i++)
         {
             if (this[i] != null)
@@ -229,7 +231,7 @@ public class Deque<T> : IDeque<T>
         if (QueueMap[FrontHead.MapPosition] == null)
             AllocateNewDataBlock(FrontHead);
         QueueMap[FrontHead.MapPosition][FrontHead.DataBlockOffset] = input;
-        Count++;
+        Count++; hash32Counter++;
         MoveFrontHead();
     }
 
@@ -240,7 +242,7 @@ public class Deque<T> : IDeque<T>
         if (QueueMap[RearHead.MapPosition] == null)
             AllocateNewDataBlock(RearHead);
         QueueMap[RearHead.MapPosition][RearHead.DataBlockOffset] = input;
-        Count++;
+        Count++; hash32Counter++;
         MoveRearHead();
     }
 
@@ -258,11 +260,11 @@ public class Deque<T> : IDeque<T>
             FrontHead.DataBlockOffset--;
         }
         T toReturn = QueueMap[FrontHead.MapPosition][FrontHead.DataBlockOffset];
-        //if (FrontHead.DataBlockOffset == 0)
-        //    QueueMap[FrontHead.MapPosition] = null;
-        //else
-        QueueMap[FrontHead.MapPosition][FrontHead.DataBlockOffset] = default(T);
-        Count--;
+        if (FrontHead.DataBlockOffset == 0)
+            QueueMap[FrontHead.MapPosition] = null;
+        else
+            QueueMap[FrontHead.MapPosition][FrontHead.DataBlockOffset] = default(T);
+        Count--; hash32Counter++;
         return toReturn;
     }
 
@@ -280,11 +282,11 @@ public class Deque<T> : IDeque<T>
             RearHead.DataBlockOffset++;
         }
         T toReturn = QueueMap[RearHead.MapPosition][RearHead.DataBlockOffset];
-        //if (RearHead.DataBlockOffset == (DATABLOCK_LENGTH - 1))
-        //    QueueMap[RearHead.MapPosition] = null;
-        //else
-        QueueMap[RearHead.MapPosition][RearHead.DataBlockOffset] = default(T);
-        Count--;
+        if (RearHead.DataBlockOffset == (DATABLOCK_LENGTH - 1))
+            QueueMap[RearHead.MapPosition] = null;
+        else
+            QueueMap[RearHead.MapPosition][RearHead.DataBlockOffset] = default(T);
+        Count--; hash32Counter++;
         return toReturn;
 
     }
@@ -617,7 +619,7 @@ public class ReverseDeque<T> : IDeque<T>, IEnumerable
         if (deque.Count == 0)
             deque.Insert(0, item);
         else
-            deque.Insert(deque.Count - 1 - index, item);
+            deque.Insert(deque.Count - index, item);
     }
 
     public bool Remove(T item) => deque.Remove(item);

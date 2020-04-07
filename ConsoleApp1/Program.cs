@@ -17,6 +17,7 @@ namespace ConsoleApp1
 
             Console.WriteLine(d.IndexOf("a"));
             Console.WriteLine(rev.IndexOf(null));
+            rev.RemoveAt(rev.Count - 1);
 
             foreach(var i in d)
             {
